@@ -4,14 +4,15 @@ import path from "path";
 import { fileURLToPath } from "url";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-// Convert import.meta.url to __dirname
+// create __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Export async config so we can use top-level await safely
-export default defineConfig(async () => {
-  // Conditionally load Replit plugins in dev
+export default defineConfig(async ({ mode }) => {
+  const isDev = mode !== "production";
+
+  // load Replit plugins ONLY in dev
   const replitPlugins =
-    process.env.NODE_ENV !== "production" && process.env.REPL_ID
+    isDev && process.env.REPL_ID
       ? [
           (await import("@replit/vite-plugin-cartographer")).cartographer(),
           (await import("@replit/vite-plugin-dev-banner")).devBanner(),
@@ -19,11 +20,14 @@ export default defineConfig(async () => {
       : [];
 
   return {
+    root: path.resolve(__dirname, "client"),
+
     plugins: [
       react(),
       runtimeErrorOverlay(),
       ...replitPlugins,
     ],
+
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "client/src"),
@@ -31,15 +35,17 @@ export default defineConfig(async () => {
         "@assets": path.resolve(__dirname, "attached_assets"),
       },
     },
-    root: path.resolve(__dirname, "client"),
+
     build: {
-      outDir: path.resolve(__dirname, "dist/public"),
+      outDir: path.resolve(__dirname, "dist"), // ✅ Netlify friendly
       emptyOutDir: true,
     },
+
     server: {
+      port: 5173,
+      open: true,
       fs: {
         strict: true,
-        deny: ["**/.*"],
       },
     },
   };
